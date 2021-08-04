@@ -1,0 +1,16 @@
+# One video of the playlist
+current video info:	ytInitialData[contents][twoColumnWatchNextResults][results][results][contents][videoPrimaryInfoRenderer]
+owner info:			ytInitialData[contents][twoColumnWatchNextResults][results][results][contents][videoSecondaryInfoRenderer]
+recommend video:	ytInitialData[contents][twoColumnWatchNextResults][secondaryResults][secondaryResults][results]
+playlist:			ytInitialData[contents][twoColumnWatchNextResults][playlist][playlist][results][contents]
+video infos:		ytInitialData[contents][twoColumnWatchNextResults][playlist][playlist][results][contents][#][playlistPanelVideoRenderer]
+	title:		~[title]
+	length:		~[lengthText]
+	index:		~[navigationEndpoint][watchEndpoint][index]
+	video ID:	~[videoId]
+	unplayable:	~[unplayableText]	// no [title], [lengthText]
+
+# One video
+current video info:	ytInitialData[contents][twoColumnWatchNextResults][results][results][contents][videoPrimaryInfoRenderer]
+owner info:			ytInitialData[contents][twoColumnWatchNextResults][results][results][contents][videoSecondaryInfoRenderer]
+recommend video:	ytInitialData[contents][twoColumnWatchNextResults][secondaryResults][secondaryResults][results]
