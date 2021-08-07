@@ -26,7 +26,7 @@ def get_data(url):
     data = json.loads(re.search(YT_DATA_PATTERN, raw_content).group("JsonData"))
     return data
 
-def get_playlist_video(lid):
+def get_one_video(lid):
     url = "https://www.youtube.com/playlist?list=" + lid
     data = get_data(url)
     vid = data["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]["content"]["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"][0]["playlistVideoRenderer"]["videoId"]
@@ -54,7 +54,7 @@ if playlist_id:
 
 if playlist_id:
     if not video_id:
-        video_id = get_playlist_video(playlist_id)
+        video_id = get_one_video(playlist_id)
     CRAWL_URL = "https://www.youtube.com/watch?v=" + video_id + "&list=" + playlist_id
 elif video_id:
     CRAWL_URL = "https://www.youtube.com/watch?v=" + video_id
@@ -65,24 +65,22 @@ print("Requsteing: {}".format(CRAWL_URL))
 DATA = get_data(CRAWL_URL)
 
 try:
-    cur_video = DATA["contents"]["twoColumnWatchNextResults"]["results"]["results"]["contents"]
-    cur_video_info = cur_video[0]["videoPrimaryInfoRenderer"]
-    owner_info = cur_video[1]["videoSecondaryInfoRenderer"]
-    recommend_video = DATA["contents"]["twoColumnWatchNextResults"]["secondaryResults"]["secondaryResults"]["results"]
     playlist = DATA["contents"]["twoColumnWatchNextResults"]["playlist"]["playlist"]
 except Exception as e:
     print(e)
 
+playlist_title = playlist["title"]
+playlist_length = playlist["totalVideos"]
 videos = []
 for vi in playlist["contents"]:
     video_info = vi["playlistPanelVideoRenderer"]
     videos.append(Video(vid = video_info["videoId"], title = video_info["title"]["simpleText"], length_text = video_info["lengthText"]["simpleText"]))
 
-print("Downloading playlist: {0} with {1} videos\n".format(playlist["title"], playlist["totalVideos"]))
+print("Downloading playlist: {0} with {1} videos\n".format(playlist_title, playlist_length))
 i = 1
 for vi in videos:
     print("# {0}  [Processing] {1}".format(i, vi.title))
-    ydl_opts = {"format": "mp4", "outtmpl": "{0}-{1}.%(ext)s".format(vi.title, vi.length_text)}
+    ydl_opts = {"format": "mp4", "outtmpl": "{0}/{1}-{2}.%(ext)s".format(playlist_title, vi.title, vi.length_text)}
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         url = "https://www.youtube.com/watch?v=" + vi.id
         ydl.download([url])
