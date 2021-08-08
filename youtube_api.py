@@ -6,7 +6,7 @@ import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import googleapiclient.errors
 
-API_KEY = "&key=AIzaSyD2J2lqnjE5V0fHviEICHMtc2PSKqY7ISk"
+API_KEY = "Your API Key"
 YOUTUBER = ""
 PLAYLIST_ID = ""
 VIDEO_IDS = []
@@ -19,20 +19,6 @@ PAGE = 0
 contents = {}
 search_results = []
 snippets = []
-
-url_1 = "https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=UCMUnInmOkrWN4gof9KlhNmQ&key=AIzaSyD2J2lqnjE5V0fHviEICHMtc2PSKqY7ISk"
-# get playlist ID from "uploads"
-url_2 = "https://www.googleapis.com/youtube/v3/videos?id=agpAxwxeIk4&key=AIzaSyD2J2lqnjE5V0fHviEICHMtc2PSKqY7ISk&part=snippet"
-# get title and discription of a video
-url_3 = "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails,status&playlistId=UUw2W7GIqJNB-UMUxncnMuiw&key=AIzaSyD2J2lqnjE5V0fHviEICHMtc2PSKqY7ISk&maxResults=10"
-# get the videos of a channel's playlist(or any playlist with its ID), set the number of videos it returns
-# if you want to get more results, add the "next page token" in the json to see the result of next page
-url_4 = "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails,status&playlistId=UUw2W7GIqJNB-UMUxncnMuiw&key=AIzaSyD2J2lqnjE5V0fHviEICHMtc2PSKqY7ISk&maxResults=10&pageToken=CAoQAA"
-# can get the first page's token from "prev page token"
-url_5 = "https://www.googleapis.com/youtube/v3/videos?id=agpAxwxeIk4&key=AIzaSyD2J2lqnjE5V0fHviEICHMtc2PSKqY7ISk&part=snippet,statistics"
-# add parameters "statistics" at part to get like/dislike/view count/comment count of the video
-url_6 = "https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=%A4%A4%A4%E5&key=AIzaSyD2J2lqnjE5V0fHviEICHMtc2PSKqY7ISk"
-# add the keywords you want to search at q
 
 def get_youtubers_list(url):
     print(url)
