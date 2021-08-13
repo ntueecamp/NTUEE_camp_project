@@ -7,47 +7,47 @@ import random
 import subprocess
 import sys, os
 
-print("Youtube Pocket - youtube music/playlist downloader\n")
+def get_player(url):
+    USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36"
+    YT_PLAYER_PATTERN = r"var ytInitialPlayerResponse = (?P<JsonData>{.*?}}});"
 
-USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36"
-
-VID_PATTERN = r"^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(embed\/|v\/|(watch\?([a-zA-Z0-9_=;\-]+&)*v=))?(?P<video_id>[a-zA-Z0-9_\-]{11,})(\?[a-zA-Z0-9_=\-]+)?(?:&[a-zA-Z0-9_=;\-]+)*(?:\#[a-zA-Z0-9_=;\-]+)*$"
-LID_PATTERN = r"^(https?:\/\/)?(www\.)?youtube\.com\/(watch\?|playlist\?)([a-zA-Z0-9_=;\-]+&)*list=(?P<playlist_id>[a-zA-Z0-9_\-]{18,})(\?[a-zA-Z0-9_=\-]+)?(?:&[a-zA-Z0-9_=;\-]+)*(?:\#[a-zA-Z0-9_=;\-]+)*$"
-YT_PLAYER_PATTERN = r"var ytInitialPlayerResponse = (?P<JsonData>{.*?}}});"
-YT_DATA_PATTERN = r"var ytInitialData = (?P<JsonData>{.*?}}});"
-
-PREF_ITAG= {      "video": [137, 399, 136, 398, 135, 397, 134, 396, 133, 395, 160, 394],
-                  "audio": [140, 141, 139],
-            "video/audio": [37, 22, 18]}
-
-def get_player_and_data(url):
-    global USER_AGENT, YT_PLAYER_PATTERN, YT_DATA_PATTERN
     response = requests.get(url, headers = {"user-agent" : USER_AGENT})
     if not response.ok:
-        return None, None
+        return None
     raw_content = response.text
 
     player = None
-    data = None
     result_player = re.search(YT_PLAYER_PATTERN, raw_content)
     if result_player:
         player = json.loads(result_player.group("JsonData"))
+
+    return player
+
+def get_data(url):
+    USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36"
+    YT_DATA_PATTERN = r"var ytInitialData = (?P<JsonData>{.*?}}});"
+
+    response = requests.get(url, headers = {"user-agent" : USER_AGENT})
+    if not response.ok:
+        return None
+    raw_content = response.text
+
+    data = None
     result_data = re.search(YT_DATA_PATTERN, raw_content)
     if result_data:
         data = json.loads(result_data.group("JsonData"))
 
-    return player, data
-
-def get_one_video(lid):
-    url = "https://www.youtube.com/playlist?list=" + lid
-    _, data = get_player_and_data(url)
-    vid = data["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]["content"]["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"][0]["playlistVideoRenderer"]["videoId"]
-    return vid
+    return data
 
 def get_dl_fmts(PLAYER):
-    global PREF_ITAG
     SIG_URL_PATTERN = r"s=(?P<sig>.*?)(&.*?)*&url=(?P<url>.*)"
     prog_sig_url = re.compile(SIG_URL_PATTERN)
+
+    PREF_ITAG = {      "video": [137, 399, 136, 398, 135, 397, 134, 396, 133, 395, 160, 394],
+                       "audio": [140, 141, 139],
+                 "video/audio": [37, 22, 18]}
+
+    available_fmts = []
     try:
         available_fmts = PLAYER["streamingData"]["formats"] + PLAYER["streamingData"]["adaptiveFormats"]
     except:
@@ -97,88 +97,14 @@ def get_dl_fmts(PLAYER):
                   "audio": audio_dl_fmt,
             "video/audio": video_audio_dl_fmt}
 
-def validate_filename(name):
-    def replace(m):
-        if m.group(0) == "\"" or m.group(0) == "*" or m.group(0) == "<" or m.group(0) == ">":
-            return "\'"
-        else:
-            return "_"
-    new_name = re.sub(r"[<>:?\.\"\*\/\|\\]", replace, name)
-    new_name = re.sub(r"\s+", " ", new_name)
-    new_name = re.sub(r"_+", "_", new_name)
-    return new_name
-
-def download(v_id, filename = None):
-    print("Preparing: {0}".format(v_id))
-    PLAYER, DATA = get_player_and_data("https://www.youtube.com/watch?v=" + v_id)
-    
-    dl_fmts = get_dl_fmts(PLAYER)     #dict
-    if not (dl_fmts["video"] or dl_fmts["audio"] or dl_fmts["video/audio"]):
-        print("No available formats.")
-        return False
-
-    try:
-        v_title = DATA["contents"]["twoColumnWatchNextResults"]["results"]["results"]["contents"][0]["videoPrimaryInfoRenderer"]["title"]["runs"][0]["text"]
-        v_length = int(PLAYER["videoDetails"]["lengthSeconds"])
-    except:
-        print("{0}: {1}".format(sys.exc_info()[0].__name__, sys.exc_info()[1]))
-
-    if filename is not None:
-        filename = validate_filename(os.path.splitext(filename)[0])
-    if not filename:
-        if v_title:
-            filename = validate_filename(v_title)
-        else:
-            filename = "ytVideo_{0}".format(int(time.time()))
-    # filename without ext
-
-    if dl_fmts["video"] and dl_fmts["audio"]:
-        # download video
-        video_fn = "{0}_v.mp4".format(validate_filename(v_id))
-        video_len = int(dl_fmts["video"]["contentLength"])
-        video_url = dl_fmts["video"]["url"]
-        print("Downloading: {0}".format(video_fn))
-        if not download_file(url = video_url, content_len = video_len, filename = video_fn):
-            print("Failed to download the video part.")
-            return False
-
-        # download audio
-        audio_fn = "{0}_a.m4a".format(validate_filename(v_id))
-        audio_len = int(dl_fmts["audio"]["contentLength"])
-        audio_url = dl_fmts["audio"]["url"]
-        print("Downloading: {0}".format(audio_fn))
-        if not download_file(url = audio_url, content_len = audio_len, filename = audio_fn):
-            print("Failed to download the audio part.")
-            return False
-
-        # merge
-        cmd = ["ffmpeg", "-loglevel", "error", "-y", "-i", video_fn, "-i", audio_fn, "-c", "copy", "-map", "0:v:0", "-map", "1:a:0", "{0}.mp4".format(filename)]
-        print("Merging the video and the audio parts.")
-        if subprocess.call(cmd) != 0:
-            print("Failed to merge the video and the audio parts.")
-            return False
-        os.remove(video_fn)
-        os.remove(audio_fn)
-
-        return True
-
-    elif dl_fmts["video/audio"]:
-        # download video/audio
-        va_fn = "{0}.mp4".format(filename)
-        va_len = int(dl_fmts["video/audio"]["contentLength"])
-        va_url = dl_fmts["video/audio"]["url"]
-        print("Downloading: {0}".format(va_fn))
-        if not download_file(url = va_url, content_len = va_len, filename = va_fn):
-            print("Failed to download the whole video.")
-
-        return True
-
 def download_file(url, content_len = -1, filename = "_"):
     if content_len <= 0:
-        print("Invalid content length.")
+        print("[Error] invalid content length")
         return False
-    chunk_size = random.randint(9375936, 10485760)
+    chunk_size = random.randint(9375936, 9999999)
     byte_count = 0
+    progess = byte_count / content_len
+    print("|{0:30}| {1:.2%}    ".format("*" * int(30*progess), progess), end = "\r")
 
     file = open(filename, "wb")
     while byte_count < content_len:
@@ -191,84 +117,244 @@ def download_file(url, content_len = -1, filename = "_"):
         raw_content = response.content
         try:
             file.write(raw_content)
-        except Exception as e:
+        except:
             print("{0}: {1}".format(sys.exc_info()[0].__name__, sys.exc_info()[1]))
             file.close()
             return False
         byte_count += len(raw_content)
+        progess = byte_count / content_len
+        print("|{0:30}| {1:.2%}    ".format("*" * int(30*progess), progess), end = "\r")
+    print("")
 
     return byte_count == content_len
 
-####################
+def validate_filename(name):
+    def replace(m):
+        if m.group(0) == "\"" or m.group(0) == "*" or m.group(0) == "<" or m.group(0) == ">":
+            return "\'"
+        else:
+            return "_"
+    new_name = re.sub(r"[<>:?\.\"\*\/\|\\]", replace, name)
+    new_name = re.sub(r"\s+", " ", new_name)
+    new_name = re.sub(r"_+", "_", new_name)
+    if new_name.isspace():
+        new_name = "_"
+    return new_name
 
-CRAWL_URL = input("URL: ")
-# CRAWL_URL = "https://www.youtube.com/watch?v=wvrQU9VCts0&list=PL2mVqrrF_bnn5qt_fqHZNRzWjKp4jqfyF"
-# CRAWL_URL = "https://www.youtube.com/playlist?list=PL2mVqrrF_bnn5qt_fqHZNRzWjKp4jqfyF"
-# CRAWL_URL = "https://www.youtube.com/watch?v=wvrQU9VCts0"
+def download(v_id, filename = None, path = ""):
+    print("[Preparing] getting info of: {0}".format(v_id))
 
-prog_vid = re.compile(VID_PATTERN)
-prog_lid = re.compile(LID_PATTERN)
-while not prog_vid.match(CRAWL_URL) and not prog_lid.match(CRAWL_URL):
-    print("Invalid URL")
+    PLAYER = get_player("https://www.youtube.com/watch?v=" + v_id)
+    try:
+        if PLAYER["playabilityStatus"]["status"] != "OK":
+            return False
+    except:
+        return False
+
+    dl_fmts = get_dl_fmts(PLAYER)
+    if not (dl_fmts["video"] or dl_fmts["audio"] or dl_fmts["video/audio"]):
+        print("[Error] no available formats")
+        return False
+
+    v_title = ""
+    try:
+        v_title = PLAYER["videoDetails"]["title"]
+    except:
+        print("{0}: {1}".format(sys.exc_info()[0].__name__, sys.exc_info()[1]))
+
+    def add_path(name):
+        if path:
+            return "{0}\\{1}".format(path, name)
+        else:
+            return name
+
+    if path:
+        path = validate_filename(path)
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+    if filename is not None:
+        filename = validate_filename(os.path.splitext(filename)[0])
+    if not filename:
+        if v_title:
+            filename = validate_filename(v_title)
+        else:
+            filename = "ytVideo_{0}".format(int(time.time()))
+    filename = add_path(filename)
+    output_fn = "{0}.mp4".format(filename)
+
+    if os.path.exists(output_fn):
+        print("[Done] file already exists: {0}".format(output_fn))
+        return True
+
+    if dl_fmts["video"] and dl_fmts["audio"]:
+        # download video
+        video_fn = add_path("{0}_v.mp4".format(validate_filename(v_id)))
+        video_len = int(dl_fmts["video"]["contentLength"])
+        video_url = dl_fmts["video"]["url"]
+        print("[Downloading] video part: {0}".format(video_fn))
+        if not download_file(url = video_url, content_len = video_len, filename = video_fn):
+            print("[Error] failed to download the video part")
+            return False
+
+        # download audio
+        audio_fn = add_path("{0}_a.m4a".format(validate_filename(v_id)))
+        audio_len = int(dl_fmts["audio"]["contentLength"])
+        audio_url = dl_fmts["audio"]["url"]
+        print("[Downloading] audio part: {0}".format(audio_fn))
+        if not download_file(url = audio_url, content_len = audio_len, filename = audio_fn):
+            print("[Error] failed to download the audio part")
+            return False
+
+        # merge
+        cmd = ["ffmpeg", "-loglevel", "error", "-y", "-i", video_fn, "-i", audio_fn, "-c", "copy", "-map", "0:v:0", "-map", "1:a:0", output_fn]
+        print("[ffmpeg] merging the video and the audio parts")
+        if subprocess.call(cmd) != 0:
+            print("[Error] failed to merge the video and the audio parts")
+            os.remove(video_fn)
+            os.remove(audio_fn)
+            return False
+        os.remove(video_fn)
+        os.remove(audio_fn)
+
+    elif dl_fmts["video/audio"]:
+        # download video/audio
+        va_fn = output_fn
+        va_len = int(dl_fmts["video/audio"]["contentLength"])
+        va_url = dl_fmts["video/audio"]["url"]
+        print("[Downloading] whole video: {0}".format(va_fn))
+        if not download_file(url = va_url, content_len = va_len, filename = va_fn):
+            print("[Error] failed to download the whole video")
+            return False
+
+    print("[Done] downloaded file: {0}".format(output_fn))
+    return True
+
+def get_one_video_id(l_id):
+    DATA = get_data("https://www.youtube.com/playlist?list=" + l_id)
+    v_id = None
+    try:
+        v_id = DATA["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]["content"]["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][0]["playlistVideoListRenderer"]["contents"][0]["playlistVideoRenderer"]["videoId"]
+    except:
+        print("{0}: {1}".format(sys.exc_info()[0].__name__, sys.exc_info()[1]))    
+    return v_id
+
+def get_playlist_info(l_id, v_id):
+    playlist_info = {}
+    if not v_id:
+        v_id = get_one_video_id(l_id)
+        if not v_id:
+            return None
+
+    DATA = get_data("https://www.youtube.com/watch?v=" + v_id + "&list=" + l_id)
+
+    playlist_info = {}
+    try:
+        playlist = DATA["contents"]["twoColumnWatchNextResults"]["playlist"]["playlist"]
+        playlist_info["title"] = playlist["title"]
+        playlist_info["totalVideos"] = playlist["totalVideos"]
+        playlist_contents = playlist["contents"]
+    except:
+        print("{0}: {1}".format(sys.exc_info()[0].__name__, sys.exc_info()[1]))
+
+    videos = []
+    video_count = 0
+    for vi in playlist_contents:
+        video = {}
+        try:
+            video_info = vi["playlistPanelVideoRenderer"]
+            video["id"] = video_info["videoId"]
+            if "unplayableText" in video_info:
+                print("[Warning] unplayable video: {0}\n".format(video["id"], video_info["unplayableText"]["simpleText"]))
+                playlist_info["totalVideos"] -= 1
+                continue
+            video["title"] = video_info["title"]["simpleText"]
+        except:
+            print("{0}: {1}".format(sys.exc_info()[0].__name__, sys.exc_info()[1]))
+            continue
+        videos.append(video)
+        video_count += 1
+
+    if not "totalVideos" in playlist_info or video_count != playlist_info["totalVideos"]:
+        print("[Warning] incorrect number of videos")
+    if not videos:
+        print("[Error] unable to extract videos from playlist")
+        return None
+    playlist_info["videos"] = videos
+
+    return playlist_info
+    # {
+    #     "title": str,
+    #     "totalVideos": int,
+    #     "videos": [
+    #         {
+    #             "id": str,
+    #             "title": str
+    #         },...
+    #     ]
+    # }
+
+def youtube_pocket():
+    VID_PATTERN = r"^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(embed\/|v\/|(watch\?([a-zA-Z0-9_=;\-]+&)*v=))?(?P<video_id>[a-zA-Z0-9_\-]{11,})(\?[a-zA-Z0-9_=\-]+)?(?:&[a-zA-Z0-9_=;\-]+)*(?:\#[a-zA-Z0-9_=;\-]+)*$"
+    LID_PATTERN = r"^(https?:\/\/)?(www\.)?youtube\.com\/(watch\?|playlist\?)([a-zA-Z0-9_=;\-]+&)*list=(?P<playlist_id>[a-zA-Z0-9_\-]{18,})(\?[a-zA-Z0-9_=\-]+)?(?:&[a-zA-Z0-9_=;\-]+)*(?:\#[a-zA-Z0-9_=;\-]+)*$"
+
+    print("Youtube Pocket - youtube music/playlist downloader\n")
+
     CRAWL_URL = input("URL: ")
 
-video_id = None
-playlist_id = None
-video_id = re.match(VID_PATTERN, CRAWL_URL)
-if video_id:
-    video_id = video_id.group("video_id")
-playlist_id = re.match(LID_PATTERN, CRAWL_URL)
-if playlist_id:
-    playlist_id = playlist_id.group("playlist_id")
+    prog_vid = re.compile(VID_PATTERN)
+    prog_lid = re.compile(LID_PATTERN)
+    while not prog_vid.match(CRAWL_URL) and not prog_lid.match(CRAWL_URL):
+        print("[Error] invalid URL")
+        CRAWL_URL = input("URL: ")
+    print("")
 
-if playlist_id and video_id:
-    tmp = input("(a)only the current vidoe or (b)the whole playlist :")
-    while tmp != 'a' and tmp != 'b':
+    video_id = None
+    playlist_id = None
+    video_id = re.match(VID_PATTERN, CRAWL_URL)
+    if video_id:
+        video_id = video_id.group("video_id")
+    playlist_id = re.match(LID_PATTERN, CRAWL_URL)
+    if playlist_id:
+        playlist_id = playlist_id.group("playlist_id")
+
+    if playlist_id and video_id:
         tmp = input("(a)only the current vidoe or (b)the whole playlist :")
-    if tmp == 'a':
-        playlist_id = None
+        while tmp != 'a' and tmp != 'b':
+            tmp = input("(a)only the current vidoe or (b)the whole playlist :")
+        if tmp == 'a':
+            playlist_id = None
 
-if playlist_id:
-    # download whole playlist
-    if not video_id:
-        video_id = get_one_video(playlist_id)
-    CRAWL_URL = "https://www.youtube.com/watch?v=" + video_id + "&list=" + playlist_id
-elif video_id:
-    # download one video
-    if not download(video_id):
-        print("Something went wrong. Skipping video {0}".format(video_id))
-else:
-    exit()
+    dl_count = 0
+    if playlist_id:
+        # download whole playlist
+        playlist_info = get_playlist_info(playlist_id, video_id)
+        if not playlist_info:
+            return
 
-print("Download complete!")
+        dir_name = ""
+        try:
+            dir_name = playlist_info["title"]
+            print("[Playlist] download playlist: {0} with {1} videos\n".format(playlist_info["title"], playlist_info["totalVideos"]))
+        except:
+            print("{0}: {1}".format(sys.exc_info()[0].__name__, sys.exc_info()[1]))
 
+        for vi in playlist_info["videos"]:
+            if download(vi["id"], None, dir_name):
+                dl_count += 1
+            else:
+                print("Something went wrong. Skipping video {0}".format(v_id))
+    elif video_id:
+        # download one video
+        if download(video_id):
+            dl_count += 1
+        else:
+            print("Something went wrong. Skipping video {0}".format(video_id))
+    else:
+        return
 
-################################################
+    print("[Complete] downloaded {0} video(s)".format(dl_count))
 
-# print("Requsteing: {0}".format(CRAWL_URL))
-# PLAYER, DATA = get_player_and_data(CRAWL_URL)
+if __name__ == "__main__":
+    youtube_pocket()
 
-# try:
-#     playlist = DATA["contents"]["twoColumnWatchNextResults"]["playlist"]["playlist"]
-# except Exception as e:
-#     print(e)
-
-# playlist_title = playlist["title"]
-# playlist_length = playlist["totalVideos"]
-# videos = []
-# for vi in playlist["contents"]:
-#     video_info = vi["playlistPanelVideoRenderer"]
-#     videos.append(Video(vid = video_info["videoId"], title = video_info["title"]["simpleText"], length_text = video_info["lengthText"]["simpleText"]))
-
-# print("Downloading playlist: {0} with {1} videos\n".format(playlist_title, playlist_length))
-# i = 1
-# for vi in videos:
-#     print("# {0}  [Processing] {1}".format(i, vi.title))
-#     ydl_opts = {"format": "mp4", "outtmpl": "{0}/{1}-{2}.%(ext)s".format(playlist_title, vi.title, vi.length_text)}
-#     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-#         url = "https://www.youtube.com/watch?v=" + vi.id
-#         ydl.download([url])
-#     i += 1
-#     print("")
-
-# print("Download complete!")
