@@ -9,9 +9,7 @@ from pylab import figure, show
 
 # apply for API key on https://console.cloud.google.com/flows/enableapi?apiid=youtube&pli=1
 # can apply multiple keys since google restricts the times you request(50000 requests per day per project)
-# API_KEY = "&key=AIzaSyD2J2lqnjE5V0fHviEICHMtc2PSKqY7ISk"
-API_KEY = "&key=AIzaSyC5fAUoqPbpf5pU-TnFiJOnu8DO6ejweY0"
-# API_KEY = "&key=AIzaSyD9l1Fi5f7OA5Xpf1ZzAAz8Krx7S8_UFU0"
+API_KEY = "YOUR_OWN_API_KEY"
 # some constants, lists and dictionaries
 YOUTUBER = ""
 PLAYLIST_ID = ""
