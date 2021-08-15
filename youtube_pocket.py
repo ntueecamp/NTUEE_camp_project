@@ -348,7 +348,7 @@ def get_playlist_info(l_id, v_id):
     #     ]
     # }
 
-def youtube_pocket(args = sys.argv):
+def youtube_pocket(args = sys.argv[1:]):
     # url pattern
     VID_PATTERN = r"^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(embed\/|v\/|(watch\?([a-zA-Z0-9_=;\-]+&)*v=))?(?P<video_id>[a-zA-Z0-9_\-]{11,})(\?[a-zA-Z0-9_=\-]+)?(?:&[a-zA-Z0-9_=;\-]+)*(?:\#[a-zA-Z0-9_=;\-]+)*$"
     LID_PATTERN = r"^(https?:\/\/)?(www\.)?youtube\.com\/(watch\?|playlist\?)([a-zA-Z0-9_=;\-]+&)*list=(?P<playlist_id>[a-zA-Z0-9_\-]{18,})(\?[a-zA-Z0-9_=\-]+)?(?:&[a-zA-Z0-9_=;\-]+)*(?:\#[a-zA-Z0-9_=;\-]+)*$"
@@ -356,8 +356,8 @@ def youtube_pocket(args = sys.argv):
     print("Youtube Pocket - youtube music/playlist downloader\n")
 
     # can be executed as python script or cmd tool
-    if len(args) > 1:
-        CRAWL_URL = args[1]
+    if len(args):
+        CRAWL_URL = args[0]
         print("URL: {0}".format(CRAWL_URL))
     else:
         CRAWL_URL = input("URL: ")
