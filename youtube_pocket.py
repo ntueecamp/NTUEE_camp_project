@@ -370,7 +370,7 @@ def youtube_pocket(args = sys.argv[1:]):
         CRAWL_URL = input("URL: ")
     print("")
 
-    # prase input url
+    # parse input url
     video_id = None
     playlist_id = None
     v_m = prog_vid.match(CRAWL_URL)
