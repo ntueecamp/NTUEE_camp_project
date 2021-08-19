@@ -66,10 +66,15 @@ def get_dl_fmts(PLAYER):
             if "itag" in fmt and ("url" in fmt or "signatureCipher" in fmt) and v_itag == fmt["itag"]:
                 # generate download url from "signatureCipher" if needed
                 if not "url" in fmt:
+                    print("[Warning] the video may be protected by copyright")
+                    choice = input("Are you sure you want to download it? (y/n)")
+                    if choice != 'y' or True:  # decipher is not cpmplete
+                        available_fmts.remove(fmt)
+                        continue
                     m = prog_sig_url.match(fmt["signatureCipher"])
                     sig = m.group("sig")
                     url = parse.unquote(m.group("url"))
-                    fmt["url"] = "{0}&sig={1}".format(url, sig)
+                    fmt["url"] = ""
                 if not "qualityLabel" in fmt:
                     fmt["qualityLabel"] = "unknown"
                 video_dl_fmt = fmt
@@ -83,10 +88,15 @@ def get_dl_fmts(PLAYER):
             if "itag" in fmt and ("url" in fmt or "signatureCipher" in fmt) and a_itag == fmt["itag"]:
                 # generate download url from "signatureCipher" if needed
                 if not "url" in fmt:
+                    print("[Warning] the video may be protected by copyright")
+                    choice = input("Are you sure you want to download it? (y/n)")
+                    if choice != 'y' or True:  # decipher is not cpmplete
+                        available_fmts.remove(fmt)
+                        continue
                     m = prog_sig_url.match(fmt["signatureCipher"])
                     sig = m.group("sig")
                     url = parse.unquote(m.group("url"))
-                    fmt["url"] = "{0}&sig={1}".format(url, sig)
+                    fmt["url"] = ""
                 if not "audioQuality" in fmt:
                     fmt["audioQuality"] = "unknown"
                 audio_dl_fmt = fmt
@@ -101,10 +111,15 @@ def get_dl_fmts(PLAYER):
                 if "itag" in fmt and ("url" in fmt or "signatureCipher" in fmt) and va_itag == fmt["itag"]:
                     # generate download url from "signatureCipher" if needed
                     if not "url" in fmt:
+                        print("[Warning] the video may be protected by copyright")
+                        choice = input("Are you sure you want to download it? (y/n)")
+                        if choice != 'y' or True:  # decipher is not cpmplete
+                            available_fmts.remove(fmt)
+                            continue
                         m = prog_sig_url.match(fmt["signatureCipher"])
                         sig = m.group("sig")
                         url = parse.unquote(m.group("url"))
-                        fmt["url"] = "{0}&sig={1}".format(url, sig)
+                        fmt["url"] = ""
                     if not "qualityLabel" in fmt:
                         fmt["qualityLabel"] = "unknown"
                     video_audio_dl_fmt = fmt
